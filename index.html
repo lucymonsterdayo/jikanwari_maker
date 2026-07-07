@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>時間割メイカー</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%85%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="toolbar no-print">
+  <div class="toolbar-row">
+    <div class="title-wrap">
+      <span class="title-icon" aria-hidden="true">📅</span>
+      <input id="titleInput" class="title-input" type="text" value="○○塾 時間割" aria-label="時間割タイトル">
+    </div>
+    <div class="toolbar-buttons">
+      <button type="button" id="btnHelp" class="btn">💡 使い方</button>
+      <button type="button" id="btnCatalog" class="btn btn-primary">📚 授業マスタ</button>
+      <button type="button" id="btnManageRooms" class="btn">🏫 教室設定</button>
+      <button type="button" id="btnSubjects" class="btn">🎨 科目設定</button>
+      <button type="button" id="btnSchedule" class="btn">🕐 表示時間設定</button>
+      <button type="button" id="btnManageDays" class="btn">🗓️ 曜日設定</button>
+      <span class="divider"></span>
+      <button type="button" id="btnOpen" class="btn btn-soft">📂 開く</button>
+      <button type="button" id="btnSave" class="btn btn-soft">💾 保存</button>
+      <button type="button" id="btnSaveAs" class="btn btn-soft">📝 名前を付けて保存</button>
+      <button type="button" id="btnPdf" class="btn btn-accent">🖨️ PDF出力</button>
+      <span class="divider"></span>
+      <button type="button" id="btnReset" class="btn btn-danger-outline">🔄 新規作成</button>
+    </div>
+  </div>
+  <div class="legend" id="legend">
+    <label class="legend-item cat-elementary"><input type="checkbox" data-cat="elementary" checked><span class="dot cat-elementary"></span>小学生</label>
+    <label class="legend-item cat-middle"><input type="checkbox" data-cat="middle" checked><span class="dot cat-middle"></span>中学生</label>
+    <label class="legend-item cat-high"><input type="checkbox" data-cat="high" checked><span class="dot cat-high"></span>高校生</label>
+  </div>
+</header>
+
+<main id="printArea">
+  <h1 id="printTitle" class="print-title"></h1>
+  <div class="grid-scroll" id="gridTopWrap">
+    <table id="gridTop" class="sched-table"></table>
+  </div>
+  <div class="grid-scroll grid-scroll-bottom hidden" id="gridBottomWrap">
+    <table id="gridBottom" class="sched-table"></table>
+  </div>
+</main>
+
+<div id="modalOverlay" class="modal-overlay hidden no-print">
+
+  <div id="catalogModal" class="modal hidden">
+    <h2>📚 授業マスタ</h2>
+    <p class="modal-hint">よく使う授業(学年・科目・講師)を登録しておくと、時間割のセルで選ぶだけで配置できます。</p>
+    <ul class="manage-list catalog-list" id="catalogList"></ul>
+    <div class="add-row catalog-add-row">
+      <select id="newCatGrade"></select>
+      <select id="newCatSubject"></select>
+      <span class="duration-wrap"><input type="number" id="newCatDuration" value="60" min="10" step="5">分</span>
+      <input type="text" id="newCatTeacher" placeholder="講師(任意)">
+      <input type="text" id="newCatNote" placeholder="クラス名・生徒名(任意)">
+      <button type="button" id="btnAddCatalog" class="btn btn-primary">登録</button>
+    </div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="pickerModal" class="modal hidden">
+    <h2>授業を選ぶ</h2>
+    <div id="pickerList" class="picker-list"></div>
+    <div class="modal-actions">
+      <button type="button" id="btnNewFromPicker" class="btn btn-primary">＋ 新しい授業を登録</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">キャンセル</button>
+    </div>
+  </div>
+
+  <div id="cellModal" class="modal hidden">
+    <h2>このコマの授業</h2>
+    <div id="cellModalBody" class="cell-modal-body"></div>
+    <div class="modal-actions">
+      <button type="button" id="btnClearCell" class="btn btn-danger">空にする</button>
+      <span class="spacer"></span>
+      <button type="button" id="btnChangeCell" class="btn btn-primary">変更する</button>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="roomsModal" class="modal hidden">
+    <h2>🏫 教室設定</h2>
+    <ul class="manage-list" id="roomsList"></ul>
+    <div class="add-row">
+      <input type="text" id="newRoomName" placeholder="新しい教室名(例: C教室)">
+      <button type="button" id="btnAddRoom" class="btn btn-primary">追加</button>
+    </div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="subjectsModal" class="modal hidden">
+    <h2>🎨 科目設定</h2>
+    <p class="modal-hint">科目ごとに色を登録すると、学年の色(バッジ)とあわせて時間割が見やすくなります。</p>
+    <ul class="manage-list subjects-list" id="subjectsList"></ul>
+    <div class="add-row subject-add-row">
+      <input type="text" id="newSubjectName" placeholder="新しい科目名(例: 算数)">
+      <button type="button" id="btnAddSubject" class="btn btn-primary">追加</button>
+    </div>
+    <div class="color-picker" id="newSubjectColorPicker"></div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="scheduleModal" class="modal hidden">
+    <h2>🕐 表示時間設定</h2>
+    <p class="modal-hint">時間割に表示する時間帯と目盛りの間隔を設定します。目盛りを細かくすると、90分授業・60分授業などが混在していても実際の長さで表示されます。</p>
+    <div class="form-grid">
+      <label>開始時刻<input type="time" id="schedStart"></label>
+      <label>終了時刻<input type="time" id="schedEnd"></label>
+      <label>目盛りの間隔
+        <select id="schedUnit">
+          <option value="15">15分</option>
+          <option value="20">20分</option>
+          <option value="30">30分</option>
+          <option value="60">60分</option>
+        </select>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="daysModal" class="modal hidden">
+    <h2>🗓️ 曜日設定</h2>
+    <ul class="manage-list" id="daysList"></ul>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal hidden">
+    <h2>💡 使い方</h2>
+    <ul class="help-list">
+      <li>①「🎨 科目設定」で科目ごとに色を登録します(10色から選べます)。</li>
+      <li>②「📚 授業マスタ」で学年・科目・講師・授業時間(分)などの授業をあらかじめ登録します。90分授業と60分授業が混在してもOKです。</li>
+      <li>③ セルの「＋」をクリックすると、登録済みの授業から選んで配置できます。授業時間に応じてセルの高さが自動で変わります。</li>
+      <li>④ 配置済みのセルをクリックすると、授業の変更や削除ができます。授業のマス目は科目の色、左上の丸は学年の色で見分けられます。</li>
+      <li>⑤ 授業をドラッグ&amp;ドロップすると別のコマへ移動できます(空いているコマのみ)。</li>
+      <li>「教室設定」「表示時間設定」「曜日設定」で表の枠組みを編集できます。</li>
+      <li>「保存」でこのPC内にファイルとして保存、「開く」で読み込みできます。</li>
+      <li>「PDF出力」を押すと印刷画面が開きます。印刷先(送信先)で「PDFに保存」を選ぶとPDFとして保存できます。</li>
+      <li>入力内容はブラウザにも自動で下書き保存されますが、大事なデータは「保存」でファイルに残すことをおすすめします。</li>
+    </ul>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-close-modal">閉じる</button>
+    </div>
+  </div>
+
+</div>
+
+<input type="file" id="fileInput" accept="application/json,.json" class="hidden">
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -55,7 +55,7 @@
     <p class="modal-hint">よく使う授業(学年・科目・講師)を登録しておくと、時間割のセルで選ぶだけで配置できます。</p>
     <ul class="manage-list catalog-list" id="catalogList"></ul>
     <div class="add-row catalog-add-row">
-      <select id="newCatGrade"></select>
+      <button type="button" id="newCatGradeBtn" class="grade-btn">学年を選択</button>
       <select id="newCatSubject"></select>
       <span class="duration-wrap"><input type="number" id="newCatDuration" value="60" min="10" step="5">分</span>
       <input type="text" id="newCatTeacher" placeholder="講師(任意)">
@@ -75,6 +75,17 @@
       <button type="button" id="btnNewFromPicker" class="btn btn-primary">＋ 新しい授業を登録</button>
       <span class="spacer"></span>
       <button type="button" class="btn btn-close-modal">キャンセル</button>
+    </div>
+  </div>
+
+  <div id="gradePickerModal" class="modal hidden">
+    <h2>学年を選択</h2>
+    <p class="modal-hint">複数の学年を選択できます(例: 英検対策など学年が混在する授業)。</p>
+    <div class="grade-picker-groups" id="gradePickerGroups"></div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" id="btnGradePickerCancel" class="btn">キャンセル</button>
+      <button type="button" id="btnGradePickerOk" class="btn btn-primary">決定</button>
     </div>
   </div>
 
@@ -151,7 +162,7 @@
     <h2>💡 使い方</h2>
     <ul class="help-list">
       <li>①「🎨 科目設定」で科目ごとに色を登録します(10色から選べます)。</li>
-      <li>②「📚 授業マスタ」で学年・科目・講師・授業時間(分)などの授業をあらかじめ登録します。90分授業と60分授業が混在してもOKです。</li>
+      <li>②「📚 授業マスタ」で学年・科目・講師・授業時間(分)などの授業をあらかじめ登録します。90分授業と60分授業が混在してもOKです。英検対策など学年が混在する授業は、複数の学年を選択できます。</li>
       <li>③ セルの「＋」をクリックすると、登録済みの授業から選んで配置できます。授業時間に応じてセルの高さが自動で変わります。</li>
       <li>④ 配置済みのセルをクリックすると、授業の変更や削除ができます。授業のマス目は科目の色、左上の丸は学年の色で見分けられます。</li>
       <li>⑤ 授業をドラッグ&amp;ドロップすると別のコマへ移動できます(空いているコマのみ)。</li>

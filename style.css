@@ -426,6 +426,69 @@ td.cell {
 .slots-list li input[type="text"] { flex: 1.4; }
 .catalog-row input[type="text"] { flex: 1; }
 
+.dots-wrap { display: inline-flex; gap: 3px; flex: 0 0 auto; }
+
+.grade-btn {
+  border: 2px solid var(--border);
+  background: #fff;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  flex: 0 0 auto;
+  transition: all .12s ease;
+}
+.grade-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.grade-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 2px;
+}
+.grade-picker-group-label {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--accent-hover);
+  margin-bottom: 8px;
+}
+.grade-picker-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.grade-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .12s ease;
+}
+.grade-check input { display: none; }
+.grade-check:hover { background: var(--accent-soft); }
+.grade-check:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
 .duration-wrap {
   display: flex;
   align-items: center;

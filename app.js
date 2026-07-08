@@ -42,6 +42,10 @@ var fileHandle = null;
 var pendingCell = null;       // {dayId, roomId, startMinutes} awaiting a template pick
 var currentCellClassId = null; // classes entry currently shown in cellModal
 var newSubjectColor = SUBJECT_COLORS[0].id;
+var newCatGrades = [];        // grades chosen for the catalog "add new" row
+var gradePickerSelection = []; // working selection while the grade picker modal is open
+var gradePickerOnApply = null; // callback(selectedGrades) invoked when the grade picker is confirmed
+var gradePickerReturnModalId = null; // modal to reopen after the grade picker closes
 
 /* ---------- Utils ---------- */
 
@@ -69,19 +73,36 @@ function mkBtn(text, onClick, cls) {
   return b;
 }
 
-function buildGradeOptionsHtml() {
-  return GRADE_OPTIONS.map(function (g) {
-    return '<optgroup label="' + g.group + '">' + g.items.map(function (i) {
-      return '<option value="' + i + '">' + i + '</option>';
-    }).join('') + '</optgroup>';
-  }).join('');
+function getTemplateGrades(tmpl) {
+  if (Array.isArray(tmpl.grades)) return tmpl.grades;
+  if (tmpl.grade) return [tmpl.grade];
+  return [];
+}
+
+function categoriesForGrades(grades) {
+  var set = {};
+  (grades || []).forEach(function (g) { var c = GRADE_TO_CATEGORY[g]; if (c) set[c] = true; });
+  return CATEGORY_ORDER.filter(function (c) { return set[c]; });
+}
+
+function templateCategories(tmpl) {
+  return categoriesForGrades(getTemplateGrades(tmpl));
+}
+
+function gradesLabel(grades) {
+  if (!grades || !grades.length) return '学年未設定';
+  return grades.join('・');
 }
 
 function chipInnerHtml(tmpl, timeRangeLabel) {
   var duration = tmpl.duration || DEFAULT_DURATION;
   var subject = state.subjects.find(function (s) { return s.id === tmpl.subjectId; });
   var subjectName = subject ? subject.name : '(科目未設定)';
-  return '<span class="chip-grade"><span class="dot cat-' + tmpl.category + '"></span>' + escapeHtml(tmpl.grade || '') + ' ・ ' + duration + '分</span>' +
+  var grades = getTemplateGrades(tmpl);
+  var dotsHtml = templateCategories(tmpl).map(function (c) {
+    return '<span class="dot cat-' + c + '"></span>';
+  }).join('');
+  return '<span class="chip-grade">' + dotsHtml + escapeHtml(gradesLabel(grades)) + ' ・ ' + duration + '分</span>' +
     '<span class="chip-subject">' + escapeHtml(subjectName) + '</span>' +
     (tmpl.teacher ? '<span class="chip-teacher">👤 ' + escapeHtml(tmpl.teacher) + '</span>' : '') +
     (tmpl.note ? '<span class="chip-note">' + escapeHtml(tmpl.note) + '</span>' : '') +
@@ -185,12 +206,14 @@ function defaultState() {
   var subjects = [
     { id: uid(), name: '算数', color: 'green' },
     { id: uid(), name: '数学', color: 'blue' },
-    { id: uid(), name: '英語', color: 'purple' }
+    { id: uid(), name: '英語', color: 'purple' },
+    { id: uid(), name: '英検対策', color: 'yellow' }
   ];
   var catalog = [
-    { id: uid(), grade: '小5', category: 'elementary', subjectId: subjects[0].id, teacher: '田中', note: '', duration: 60 },
-    { id: uid(), grade: '中2', category: 'middle', subjectId: subjects[1].id, teacher: '鈴木', note: '', duration: 60 },
-    { id: uid(), grade: '高3', category: 'high', subjectId: subjects[2].id, teacher: '山田', note: '受験クラス', duration: 90 }
+    { id: uid(), grades: ['小5'], subjectId: subjects[0].id, teacher: '田中', note: '', duration: 60 },
+    { id: uid(), grades: ['中2'], subjectId: subjects[1].id, teacher: '鈴木', note: '', duration: 60 },
+    { id: uid(), grades: ['高3'], subjectId: subjects[2].id, teacher: '山田', note: '受験クラス', duration: 90 },
+    { id: uid(), grades: ['小6', '中1', '中2'], subjectId: subjects[3].id, teacher: '', note: '準2級対策', duration: 60 }
   ];
   return {
     title: '○○塾 時間割',
@@ -356,7 +379,9 @@ function buildClassBlock(cls, tmpl) {
   div.className = 'class-block chip';
   div.draggable = true;
   div.dataset.id = cls.id;
-  if (!filter[tmpl.category]) div.classList.add('filtered-out');
+  var cats = templateCategories(tmpl);
+  var anyVisible = cats.length === 0 || cats.some(function (c) { return filter[c]; });
+  if (!anyVisible) div.classList.add('filtered-out');
   div.innerHTML = chipInnerHtml(tmpl, classTimeRangeLabel(cls, tmpl));
   applyChipColor(div, tmpl);
 
@@ -437,12 +462,20 @@ function renderPicker() {
     body.appendChild(p);
     return;
   }
-  CATEGORY_ORDER.forEach(function (cat) {
-    var items = state.catalog.filter(function (t) { return t.category === cat; });
+
+  var singleGroups = { elementary: [], middle: [], high: [] };
+  var mixedGroup = [];
+  state.catalog.forEach(function (t) {
+    var cats = templateCategories(t);
+    if (cats.length === 1) singleGroups[cats[0]].push(t);
+    else mixedGroup.push(t);
+  });
+
+  function renderGroup(label, items) {
     if (!items.length) return;
     var h = document.createElement('div');
     h.className = 'picker-group-label';
-    h.textContent = CATEGORY_LABEL[cat];
+    h.textContent = label;
     body.appendChild(h);
     var wrap = document.createElement('div');
     wrap.className = 'picker-chips';
@@ -464,7 +497,10 @@ function renderPicker() {
       wrap.appendChild(chip);
     });
     body.appendChild(wrap);
-  });
+  }
+
+  CATEGORY_ORDER.forEach(function (cat) { renderGroup(CATEGORY_LABEL[cat], singleGroups[cat]); });
+  renderGroup('複数学年(英検対策など)', mixedGroup);
 }
 
 /* ---------- Cell modal (view / change / clear a placed class) ---------- */
@@ -504,11 +540,89 @@ document.getElementById('btnChangeCell').addEventListener('click', function () {
   openPicker({ dayId: cls.dayId, roomId: cls.roomId, startMinutes: cls.startMinutes });
 });
 
+/* ---------- Grade picker (multi-select, e.g. 英検 spanning several grades) ---------- */
+
+function openGradePicker(currentGrades, onApply) {
+  var visible = document.querySelector('.modal:not(.hidden)');
+  gradePickerReturnModalId = visible ? visible.id : null;
+  gradePickerSelection = (currentGrades || []).slice();
+  gradePickerOnApply = onApply;
+  renderGradePickerGroups();
+  showModal('gradePickerModal');
+}
+
+function returnFromGradePicker() {
+  var returnTo = gradePickerReturnModalId;
+  gradePickerReturnModalId = null;
+  gradePickerOnApply = null;
+  if (returnTo) { showModal(returnTo); } else { closeModals(); }
+}
+
+function renderGradePickerGroups() {
+  var container = document.getElementById('gradePickerGroups');
+  container.innerHTML = '';
+  GRADE_OPTIONS.forEach(function (g) {
+    var groupDiv = document.createElement('div');
+    groupDiv.className = 'grade-picker-group';
+
+    var label = document.createElement('div');
+    label.className = 'grade-picker-group-label';
+    label.textContent = g.group;
+    groupDiv.appendChild(label);
+
+    var itemsWrap = document.createElement('div');
+    itemsWrap.className = 'grade-picker-items';
+    g.items.forEach(function (grade) {
+      var item = document.createElement('label');
+      item.className = 'grade-check';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = gradePickerSelection.indexOf(grade) !== -1;
+      cb.addEventListener('change', function () {
+        if (cb.checked) {
+          if (gradePickerSelection.indexOf(grade) === -1) gradePickerSelection.push(grade);
+        } else {
+          gradePickerSelection = gradePickerSelection.filter(function (x) { return x !== grade; });
+        }
+      });
+      item.appendChild(cb);
+      item.appendChild(document.createTextNode(grade));
+      itemsWrap.appendChild(item);
+    });
+    groupDiv.appendChild(itemsWrap);
+    container.appendChild(groupDiv);
+  });
+}
+
+document.getElementById('btnGradePickerCancel').addEventListener('click', returnFromGradePicker);
+
+document.getElementById('btnGradePickerOk').addEventListener('click', function () {
+  if (gradePickerSelection.length === 0) { toast('学年を1つ以上選択してください'); return; }
+  var selected = gradePickerSelection.slice();
+  var cb = gradePickerOnApply;
+  returnFromGradePicker();
+  if (cb) cb(selected);
+});
+
 /* ---------- Catalog management (授業マスタ) ---------- */
+
+function refreshNewCatGradeButton() {
+  var btn = document.getElementById('newCatGradeBtn');
+  btn.textContent = newCatGrades.length ? gradesLabel(newCatGrades) : '学年を選択';
+  btn.title = btn.textContent;
+}
+
+document.getElementById('newCatGradeBtn').addEventListener('click', function () {
+  openGradePicker(newCatGrades, function (selected) {
+    newCatGrades = selected;
+    refreshNewCatGradeButton();
+  });
+});
 
 function openCatalogModal() {
   renderCatalogList();
   refreshNewCatSubjectOptions();
+  refreshNewCatGradeButton();
   showModal('catalogModal');
 }
 
@@ -538,20 +652,35 @@ function renderCatalogList() {
     var li = document.createElement('li');
     li.className = 'catalog-row';
 
-    var dot = document.createElement('span');
-    dot.className = 'dot cat-' + tmpl.category;
-    li.appendChild(dot);
+    var dotsWrap = document.createElement('span');
+    dotsWrap.className = 'dots-wrap';
+    function refreshDots() {
+      dotsWrap.innerHTML = templateCategories(tmpl).map(function (c) {
+        return '<span class="dot cat-' + c + '"></span>';
+      }).join('');
+    }
+    refreshDots();
+    li.appendChild(dotsWrap);
 
-    var gradeSel = document.createElement('select');
-    gradeSel.innerHTML = buildGradeOptionsHtml();
-    gradeSel.value = tmpl.grade;
-    gradeSel.addEventListener('change', function () {
-      tmpl.grade = gradeSel.value;
-      tmpl.category = GRADE_TO_CATEGORY[tmpl.grade] || 'elementary';
-      dot.className = 'dot cat-' + tmpl.category;
-      persistLocal(); renderGrid();
+    var gradeBtn = document.createElement('button');
+    gradeBtn.type = 'button';
+    gradeBtn.className = 'grade-btn';
+    function refreshGradeBtn() {
+      var grades = getTemplateGrades(tmpl);
+      gradeBtn.textContent = gradesLabel(grades);
+      gradeBtn.title = gradesLabel(grades);
+    }
+    refreshGradeBtn();
+    gradeBtn.addEventListener('click', function () {
+      openGradePicker(getTemplateGrades(tmpl), function (selected) {
+        tmpl.grades = selected;
+        if (tmpl.grade) delete tmpl.grade;
+        persistLocal(); renderGrid();
+        refreshDots();
+        refreshGradeBtn();
+      });
     });
-    li.appendChild(gradeSel);
+    li.appendChild(gradeBtn);
 
     var subjectSel = document.createElement('select');
     subjectSel.innerHTML = buildSubjectSelectHtml(tmpl.subjectId);
@@ -615,18 +744,19 @@ function renderCatalogList() {
 }
 
 document.getElementById('btnAddCatalog').addEventListener('click', function () {
-  var grade = document.getElementById('newCatGrade').value;
   var subjectId = document.getElementById('newCatSubject').value;
   var teacher = document.getElementById('newCatTeacher').value.trim();
   var note = document.getElementById('newCatNote').value.trim();
   var durationRaw = parseInt(document.getElementById('newCatDuration').value, 10);
   var duration = (isFinite(durationRaw) && durationRaw > 0) ? durationRaw : DEFAULT_DURATION;
+  if (newCatGrades.length === 0) { toast('学年を1つ以上選択してください'); return; }
   if (!subjectId) { toast('先に「🎨 科目設定」で科目を登録してください'); return; }
-  var category = GRADE_TO_CATEGORY[grade] || 'elementary';
-  var tmpl = { id: uid(), grade: grade, category: category, subjectId: subjectId, teacher: teacher, note: note, duration: duration };
+  var tmpl = { id: uid(), grades: newCatGrades.slice(), subjectId: subjectId, teacher: teacher, note: note, duration: duration };
   state.catalog.push(tmpl);
   persistLocal();
 
+  newCatGrades = [];
+  refreshNewCatGradeButton();
   document.getElementById('newCatTeacher').value = '';
   document.getElementById('newCatNote').value = '';
   document.getElementById('newCatDuration').value = '60';
@@ -915,8 +1045,8 @@ document.getElementById('titleInput').addEventListener('input', function (e) {
   persistLocal();
 });
 
-document.getElementById('btnCatalog').addEventListener('click', function () { pendingCell = null; openCatalogModal(); });
-document.getElementById('btnNewFromPicker').addEventListener('click', function () { openCatalogModal(); });
+document.getElementById('btnCatalog').addEventListener('click', function () { pendingCell = null; newCatGrades = []; openCatalogModal(); });
+document.getElementById('btnNewFromPicker').addEventListener('click', function () { newCatGrades = []; openCatalogModal(); });
 document.getElementById('btnManageRooms').addEventListener('click', function () { renderRoomsList(); showModal('roomsModal'); });
 document.getElementById('btnSubjects').addEventListener('click', openSubjectsModal);
 document.getElementById('btnSchedule').addEventListener('click', openScheduleModal);
@@ -971,8 +1101,6 @@ document.querySelectorAll('#legend input[type="checkbox"]').forEach(function (cb
 /* ---------- Init ---------- */
 
 function init() {
-  document.getElementById('newCatGrade').innerHTML = buildGradeOptionsHtml();
-
   var saved = null;
   try { saved = localStorage.getItem(LS_KEY); } catch (e) { /* ignore */ }
   if (saved) {

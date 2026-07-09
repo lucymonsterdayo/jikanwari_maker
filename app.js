@@ -1046,6 +1046,290 @@ function exportPdf() {
   window.print();
 }
 
+/* ---------- Zoom ---------- */
+
+var zoomLevel = 1;
+var ZOOM_MIN = 0.6;
+var ZOOM_MAX = 1.6;
+var ZOOM_STEP = 0.1;
+
+function applyZoom() {
+  document.getElementById('gridTopWrap').style.zoom = zoomLevel;
+  document.getElementById('gridBottomWrap').style.zoom = zoomLevel;
+  document.getElementById('zoomLabel').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+document.getElementById('btnZoomIn').addEventListener('click', function () {
+  zoomLevel = Math.min(ZOOM_MAX, Math.round((zoomLevel + ZOOM_STEP) * 100) / 100);
+  applyZoom();
+});
+document.getElementById('btnZoomOut').addEventListener('click', function () {
+  zoomLevel = Math.max(ZOOM_MIN, Math.round((zoomLevel - ZOOM_STEP) * 100) / 100);
+  applyZoom();
+});
+document.getElementById('btnZoomReset').addEventListener('click', function () {
+  zoomLevel = 1;
+  applyZoom();
+});
+
+/* ---------- Image export (画像で保存) ----------
+   Drawn directly onto a <canvas> from the schedule data, rather than rasterizing
+   the live DOM: a foreignObject-based SVG snapshot taints the canvas in Chromium
+   (drawImage succeeds but toBlob/toDataURL then throw a SecurityError), so DOM
+   cloning can't be used here. Native canvas 2D drawing never taints. */
+
+var CATEGORY_COLOR = { elementary: '#6fd39a', middle: '#7fb0f5', high: '#ffab77', other: '#a99bd6' };
+var IMG_FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif';
+var IMG_TIME_COL_WIDTH = 64;
+var IMG_ROOM_COL_WIDTH = 122;
+var IMG_ROW_HEIGHT = 70;
+var IMG_DAY_HEADER_HEIGHT = 30;
+var IMG_ROOM_HEADER_HEIGHT = 26;
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  var rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function fillTextEllipsis(ctx, text, x, y, maxWidth) {
+  if (maxWidth <= 0) return;
+  if (ctx.measureText(text).width <= maxWidth) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  var t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxWidth) {
+    t = t.slice(0, -1);
+  }
+  ctx.fillText(t + '…', x, y);
+}
+
+function buildDayRoomPlacements(days, rooms, rows) {
+  var map = {};
+  days.forEach(function (day) {
+    rooms.forEach(function (room) {
+      var list = [];
+      var consumedUntil = 0;
+      rows.forEach(function (rowStartMin, rowIdx) {
+        if (rowIdx < consumedUntil) return;
+        var cls = state.classes.find(function (c) {
+          return c.dayId === day.id && c.roomId === room.id && c.startMinutes === rowStartMin;
+        });
+        if (cls) {
+          var tmpl = state.catalog.find(function (t) { return t.id === cls.templateId; });
+          var span = Math.min(templateSpan(tmpl), rows.length - rowIdx);
+          list.push({ rowIdx: rowIdx, span: span, cls: cls, tmpl: tmpl });
+          consumedUntil = rowIdx + span;
+        } else {
+          consumedUntil = rowIdx + 1;
+        }
+      });
+      map[day.id + '|' + room.id] = list;
+    });
+  });
+  return map;
+}
+
+function drawClassCell(ctx, placement, x, y, w, h) {
+  var tmpl = placement.tmpl;
+  if (!tmpl) return;
+  var subject = state.subjects.find(function (s) { return s.id === tmpl.subjectId; });
+  var c = subject ? SUBJECT_COLOR_MAP[subject.color] : null;
+  var bg = c ? c.bg : '#eef0f2';
+  var border = c ? c.border : '#c7ccd1';
+  var textColor = c ? c.text : '#51565c';
+
+  roundRectPath(ctx, x + 2, y + 2, w - 4, h - 4, 12);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = border;
+  ctx.stroke();
+
+  var innerX = x + 10;
+  var maxTextWidth = (x + w - 8) - innerX;
+  var lineY = y + 9;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+
+  var dotX = innerX;
+  templateCategories(tmpl).forEach(function (cat) {
+    ctx.fillStyle = CATEGORY_COLOR[cat] || '#a9b0b8';
+    ctx.beginPath();
+    ctx.arc(dotX + 4, lineY + 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+    dotX += 11;
+  });
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 11px ' + IMG_FONT;
+  var duration = tmpl.duration || DEFAULT_DURATION;
+  var gradeText = gradesLabel(getTemplateGrades(tmpl)) + ' ・ ' + duration + '分';
+  fillTextEllipsis(ctx, gradeText, dotX, lineY, maxTextWidth - (dotX - innerX));
+  lineY += 16;
+
+  var subjectName = subject ? subject.name : '(科目未設定)';
+  ctx.font = 'bold 13px ' + IMG_FONT;
+  fillTextEllipsis(ctx, subjectName, innerX, lineY, maxTextWidth);
+  lineY += 18;
+
+  var metaParts = [];
+  if (tmpl.teacher) metaParts.push('👤 ' + tmpl.teacher);
+  if (tmpl.note) metaParts.push(tmpl.note);
+  if (metaParts.length && lineY + 14 <= y + h - 16) {
+    ctx.font = '11px ' + IMG_FONT;
+    ctx.globalAlpha = 0.85;
+    fillTextEllipsis(ctx, metaParts.join(' ・ '), innerX, lineY, maxTextWidth);
+    ctx.globalAlpha = 1;
+  }
+
+  var timeLabel = classTimeRangeLabel(placement.cls, tmpl);
+  ctx.font = 'bold 10px ' + IMG_FONT;
+  ctx.globalAlpha = 0.75;
+  ctx.textBaseline = 'bottom';
+  fillTextEllipsis(ctx, timeLabel, innerX, y + h - 7, maxTextWidth);
+  ctx.globalAlpha = 1;
+  ctx.textBaseline = 'top';
+}
+
+function drawGridSection(ctx, opts) {
+  var days = opts.days, rooms = opts.rooms, rows = opts.rows, x0 = opts.x, y0 = opts.y;
+  var colWidth = IMG_ROOM_COL_WIDTH;
+  var headerHeight = IMG_DAY_HEADER_HEIGHT + IMG_ROOM_HEADER_HEIGHT;
+  var bodyY = y0 + headerHeight;
+  var placements = buildDayRoomPlacements(days, rooms, rows);
+
+  var x = x0 + IMG_TIME_COL_WIDTH;
+  days.forEach(function (day) {
+    var w = rooms.length * colWidth;
+    var grad = ctx.createLinearGradient(x, y0, x + w, y0);
+    grad.addColorStop(0, '#ffe1ee');
+    grad.addColorStop(1, '#e2ecff');
+    roundRectPath(ctx, x + 2, y0, w - 4, IMG_DAY_HEADER_HEIGHT - 2, 10);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.fillStyle = '#6a5b9c';
+    ctx.font = 'bold 14px ' + IMG_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(day.label, x + w / 2, y0 + IMG_DAY_HEADER_HEIGHT / 2);
+    x += w;
+  });
+
+  x = x0 + IMG_TIME_COL_WIDTH;
+  var ry = y0 + IMG_DAY_HEADER_HEIGHT;
+  days.forEach(function () {
+    rooms.forEach(function (room) {
+      roundRectPath(ctx, x + 2, ry, colWidth - 4, IMG_ROOM_HEADER_HEIGHT - 2, 8);
+      ctx.fillStyle = '#f4f1fc';
+      ctx.fill();
+      ctx.fillStyle = '#9a93ac';
+      ctx.font = 'bold 12px ' + IMG_FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      fillTextEllipsis(ctx, room.name, x + colWidth / 2, ry + IMG_ROOM_HEADER_HEIGHT / 2, colWidth - 12);
+      x += colWidth;
+    });
+  });
+
+  rows.forEach(function (rowStartMin, rowIdx) {
+    var cellY = bodyY + rowIdx * IMG_ROW_HEIGHT;
+    var isHour = rowStartMin % 60 === 0;
+    roundRectPath(ctx, x0 + 2, cellY, IMG_TIME_COL_WIDTH - 4, IMG_ROW_HEIGHT - 2, 8);
+    ctx.fillStyle = isHour ? '#eee9fd' : '#f7f4fd';
+    ctx.fill();
+    ctx.fillStyle = isHour ? '#7666e8' : '#9a93ac';
+    ctx.font = (isHour ? 'bold 12px ' : '11px ') + IMG_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(minutesToTime(rowStartMin), x0 + IMG_TIME_COL_WIDTH / 2, cellY + IMG_ROW_HEIGHT / 2);
+  });
+
+  x = x0 + IMG_TIME_COL_WIDTH;
+  days.forEach(function (day) {
+    rooms.forEach(function (room) {
+      var list = placements[day.id + '|' + room.id] || [];
+      var startAt = {};
+      var covered = {};
+      list.forEach(function (p) {
+        startAt[p.rowIdx] = p;
+        for (var i = 1; i < p.span; i++) covered[p.rowIdx + i] = true;
+      });
+      for (var rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+        if (covered[rowIdx]) continue;
+        var cellY = bodyY + rowIdx * IMG_ROW_HEIGHT;
+        var p = startAt[rowIdx];
+        if (p) {
+          drawClassCell(ctx, p, x, cellY, colWidth, IMG_ROW_HEIGHT * p.span);
+        } else {
+          roundRectPath(ctx, x + 2, cellY, colWidth - 4, IMG_ROW_HEIGHT - 2, 10);
+          ctx.fillStyle = '#fbfaff';
+          ctx.fill();
+        }
+      }
+      x += colWidth;
+    });
+  });
+
+  return y0 + headerHeight + rows.length * IMG_ROW_HEIGHT;
+}
+
+function exportImage() {
+  var activeDays = state.days.filter(function (d) { return d.active; });
+  if (!activeDays.length) { toast('表示する曜日がありません'); return; }
+  var topDays = activeDays.slice(0, TOP_ROW_MAX_DAYS);
+  var bottomDays = activeDays.slice(TOP_ROW_MAX_DAYS);
+  var rooms = state.rooms.length ? state.rooms : [{ id: '__none__', name: '(教室未設定)' }];
+  var rows = scheduleRows();
+
+  var sectionWidthOf = function (days) { return IMG_TIME_COL_WIDTH + days.length * rooms.length * IMG_ROOM_COL_WIDTH; };
+  var sectionHeight = IMG_DAY_HEADER_HEIGHT + IMG_ROOM_HEADER_HEIGHT + rows.length * IMG_ROW_HEIGHT;
+  var padding = 20;
+  var titleHeight = 34;
+  var sectionGap = 18;
+
+  var contentWidth = Math.max(sectionWidthOf(topDays), bottomDays.length ? sectionWidthOf(bottomDays) : 0) + padding * 2;
+  var contentHeight = padding * 2 + titleHeight + sectionHeight + (bottomDays.length ? sectionGap + sectionHeight : 0);
+
+  var scale = 2;
+  var canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(contentWidth * scale);
+  canvas.height = Math.ceil(contentHeight * scale);
+  var ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, contentWidth, contentHeight);
+
+  ctx.fillStyle = '#22262b';
+  ctx.font = 'bold 20px ' + IMG_FONT;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(state.title, padding, padding);
+
+  var y = padding + titleHeight;
+  y = drawGridSection(ctx, { days: topDays, rooms: rooms, rows: rows, x: padding, y: y });
+  if (bottomDays.length) {
+    y += sectionGap;
+    drawGridSection(ctx, { days: bottomDays, rooms: rooms, rows: rows, x: padding, y: y });
+  }
+
+  canvas.toBlob(function (blob) {
+    if (!blob) { toast('画像の書き出しに失敗しました'); return; }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = sanitizeFileName(state.title) + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast('画像を保存しました');
+  }, 'image/png');
+}
+
 /* ---------- Wire up static UI ---------- */
 
 document.getElementById('titleInput').addEventListener('input', function (e) {
@@ -1066,6 +1350,7 @@ document.getElementById('btnOpen').addEventListener('click', openFromFile);
 document.getElementById('btnSave').addEventListener('click', function () { saveToFile(false); });
 document.getElementById('btnSaveAs').addEventListener('click', function () { saveToFile(true); });
 document.getElementById('btnPdf').addEventListener('click', exportPdf);
+document.getElementById('btnSaveImage').addEventListener('click', exportImage);
 
 document.getElementById('btnReset').addEventListener('click', function () {
   if (confirm('現在の時間割データを削除して新規作成します。保存していない変更は失われますがよろしいですか？')) {

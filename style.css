@@ -177,6 +177,53 @@ body {
 .dot.cat-high { background: var(--color-high-border); }
 .dot.cat-other { background: var(--color-other-border); }
 
+/* ---------- Zoom bar ---------- */
+.zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 18px 0;
+  padding: 8px 14px;
+  background: var(--panel);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(139, 124, 246, 0.10);
+  width: fit-content;
+}
+.zoom-bar-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.zoom-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: var(--accent-hover);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .12s ease;
+}
+.zoom-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.zoom-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  min-width: 40px;
+  text-align: center;
+}
+.zoom-reset-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
 /* ---------- Grid ---------- */
 main#printArea {
   padding: 18px;

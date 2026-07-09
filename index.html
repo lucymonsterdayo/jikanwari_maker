@@ -27,6 +27,7 @@
       <button type="button" id="btnSave" class="btn btn-soft">💾 保存</button>
       <button type="button" id="btnSaveAs" class="btn btn-soft">📝 名前を付けて保存</button>
       <button type="button" id="btnPdf" class="btn btn-accent">🖨️ PDF出力</button>
+      <button type="button" id="btnSaveImage" class="btn btn-accent">🖼️ 画像で保存</button>
       <span class="divider"></span>
       <button type="button" id="btnReset" class="btn btn-danger-outline">🔄 新規作成</button>
     </div>
@@ -38,6 +39,14 @@
     <label class="legend-item cat-other"><input type="checkbox" data-cat="other" checked><span class="dot cat-other"></span>その他</label>
   </div>
 </header>
+
+<div class="zoom-bar no-print">
+  <span class="zoom-bar-label">🔍 表示倍率</span>
+  <button type="button" id="btnZoomOut" class="zoom-btn" aria-label="縮小">－</button>
+  <span id="zoomLabel" class="zoom-label">100%</span>
+  <button type="button" id="btnZoomIn" class="zoom-btn" aria-label="拡大">＋</button>
+  <button type="button" id="btnZoomReset" class="btn zoom-reset-btn">リセット</button>
+</div>
 
 <main id="printArea">
   <h1 id="printTitle" class="print-title"></h1>
@@ -170,6 +179,8 @@
       <li>「教室設定」「表示時間設定」「曜日設定」で表の枠組みを編集できます。</li>
       <li>「保存」でこのPC内にファイルとして保存、「開く」で読み込みできます。</li>
       <li>「PDF出力」を押すと印刷画面が開きます。印刷先(送信先)で「PDFに保存」を選ぶとPDFとして保存できます。</li>
+      <li>「画像で保存」で時間割全体をPNG画像としてダウンロードできます。SNSやチャットで手軽に共有したいときに便利です。</li>
+      <li>表の上にある「🔍 表示倍率」で時間割の拡大・縮小ができます(保存データには影響しません)。</li>
       <li>入力内容はブラウザにも自動で下書き保存されますが、大事なデータは「保存」でファイルに残すことをおすすめします。</li>
     </ul>
     <div class="modal-actions">

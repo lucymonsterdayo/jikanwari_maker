@@ -107,8 +107,12 @@ function chipInnerHtml(tmpl, timeRangeLabel) {
   var html = '<span class="chip-grade">' + dotsHtml +
     '<span class="chip-grade-text">' + escapeHtml(gradesLabel(grades)) + ' ・ ' + duration + '分</span></span>' +
     '<span class="chip-subject">' + escapeHtml(subjectName) + '</span>';
-  if (tmpl.teacher) html += '<span class="chip-teacher">👤 ' + escapeHtml(tmpl.teacher) + '</span>';
-  if (tmpl.note) html += '<span class="chip-note">' + escapeHtml(tmpl.note) + '</span>';
+
+  var metaParts = [];
+  if (tmpl.teacher) metaParts.push('👤 ' + escapeHtml(tmpl.teacher));
+  if (tmpl.note) metaParts.push(escapeHtml(tmpl.note));
+  if (metaParts.length) html += '<span class="chip-meta">' + metaParts.join(' ・ ') + '</span>';
+
   if (timeRangeLabel) html += '<span class="chip-time">' + escapeHtml(timeRangeLabel) + '</span>';
   return html;
 }

@@ -94,7 +94,7 @@ function gradesLabel(grades) {
   return grades.join('・');
 }
 
-function chipInnerHtml(tmpl, timeRangeLabel) {
+function chipInnerHtml(tmpl, timeRangeLabel, span) {
   var duration = tmpl.duration || DEFAULT_DURATION;
   var subject = state.subjects.find(function (s) { return s.id === tmpl.subjectId; });
   var subjectName = subject ? subject.name : '(科目未設定)';
@@ -102,11 +102,22 @@ function chipInnerHtml(tmpl, timeRangeLabel) {
   var dotsHtml = templateCategories(tmpl).map(function (c) {
     return '<span class="dot cat-' + c + '"></span>';
   }).join('');
-  return '<span class="chip-grade">' + dotsHtml + escapeHtml(gradesLabel(grades)) + ' ・ ' + duration + '分</span>' +
-    '<span class="chip-subject">' + escapeHtml(subjectName) + '</span>' +
-    (tmpl.teacher ? '<span class="chip-teacher">👤 ' + escapeHtml(tmpl.teacher) + '</span>' : '') +
-    (tmpl.note ? '<span class="chip-note">' + escapeHtml(tmpl.note) + '</span>' : '') +
-    (timeRangeLabel ? '<span class="chip-time">' + escapeHtml(timeRangeLabel) + '</span>' : '');
+
+  // A cell's row height is shared across every column in that row band, so a chip's
+  // content must never need more vertical space than its own rowSpan provides —
+  // otherwise every column in that row grows to match, producing uneven row heights.
+  // With a single row (span 1) there's only room for the essentials.
+  var showExtras = span == null || span >= 2;
+
+  var html = '<span class="chip-grade">' + dotsHtml +
+    '<span class="chip-grade-text">' + escapeHtml(gradesLabel(grades)) + ' ・ ' + duration + '分</span></span>' +
+    '<span class="chip-subject">' + escapeHtml(subjectName) + '</span>';
+  if (showExtras) {
+    if (tmpl.teacher) html += '<span class="chip-teacher">👤 ' + escapeHtml(tmpl.teacher) + '</span>';
+    if (tmpl.note) html += '<span class="chip-note">' + escapeHtml(tmpl.note) + '</span>';
+    if (timeRangeLabel) html += '<span class="chip-time">' + escapeHtml(timeRangeLabel) + '</span>';
+  }
+  return html;
 }
 
 function classTimeRangeLabel(cls, tmpl) {
@@ -348,7 +359,7 @@ function renderGridTable(table, activeDays) {
           var span = Math.min(templateSpan(tmpl), rows.length - rowIdx);
           td.rowSpan = span;
           consumedUntil[day.id][room.id] = rowIdx + span;
-          var block = buildClassBlock(cls, tmpl);
+          var block = buildClassBlock(cls, tmpl, span);
           if (block) td.appendChild(block);
         } else {
           td.rowSpan = 1;
@@ -373,7 +384,7 @@ function renderGridTable(table, activeDays) {
   table.appendChild(tbody);
 }
 
-function buildClassBlock(cls, tmpl) {
+function buildClassBlock(cls, tmpl, span) {
   if (!tmpl) return null;
   var div = document.createElement('div');
   div.className = 'class-block chip';
@@ -382,7 +393,7 @@ function buildClassBlock(cls, tmpl) {
   var cats = templateCategories(tmpl);
   var anyVisible = cats.length === 0 || cats.some(function (c) { return filter[c]; });
   if (!anyVisible) div.classList.add('filtered-out');
-  div.innerHTML = chipInnerHtml(tmpl, classTimeRangeLabel(cls, tmpl));
+  div.innerHTML = chipInnerHtml(tmpl, classTimeRangeLabel(cls, tmpl), span);
   applyChipColor(div, tmpl);
 
   div.addEventListener('click', function () { openCellModal(cls.id); });

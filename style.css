@@ -247,7 +247,7 @@ th.slot-head.hour-mark {
 }
 
 td.cell {
-  height: 38px;
+  height: 46px;
   min-width: 120px;
   padding: 2px;
   background: #fbfaff;
@@ -279,15 +279,16 @@ td.cell {
 .chip {
   border-radius: 14px;
   border: 2px solid;
-  padding: 6px 10px;
+  padding: 4px 10px;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.25;
   text-align: left;
   box-shadow: 0 2px 6px rgba(80, 60, 120, 0.08);
   transition: transform .12s ease, box-shadow .12s ease;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  overflow: hidden;
 }
 .chip:hover {
   transform: translateY(-2px) scale(1.02);
@@ -307,8 +308,14 @@ td.cell {
 
 .chip.subj-none { background: #eef0f2; border-color: #c7ccd1; color: #51565c; }
 
-.chip-grade { font-weight: 800; font-size: 11px; opacity: 0.85; display: flex; align-items: center; gap: 4px; }
+.chip-grade { font-weight: 800; font-size: 11px; opacity: 0.85; display: flex; align-items: center; gap: 4px; min-width: 0; }
 .chip-grade .dot { width: 9px; height: 9px; flex: none; }
+.chip-grade-text, .chip-subject, .chip-teacher, .chip-note, .chip-time {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 .chip-subject { font-weight: 800; font-size: 13px; }
 .chip-teacher, .chip-note { font-size: 11px; opacity: 0.85; }
 .chip-time { font-size: 10px; opacity: 0.75; font-weight: 700; margin-top: auto; padding-top: 2px; }

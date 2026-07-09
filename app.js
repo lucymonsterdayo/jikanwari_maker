@@ -7,7 +7,8 @@ var LS_KEY = 'jikanwari_maker_draft_v1';
 var GRADE_OPTIONS = [
   { group: '小学生', category: 'elementary', items: ['小1', '小2', '小3', '小4', '小5', '小6'] },
   { group: '中学生', category: 'middle', items: ['中1', '中2', '中3'] },
-  { group: '高校生', category: 'high', items: ['高1', '高2', '高3'] }
+  { group: '高校生', category: 'high', items: ['高1', '高2', '高3'] },
+  { group: 'その他', category: 'other', items: ['既卒', '幼児', '一般', 'その他'] }
 ];
 
 var GRADE_TO_CATEGORY = {};
@@ -15,8 +16,8 @@ GRADE_OPTIONS.forEach(function (g) {
   g.items.forEach(function (i) { GRADE_TO_CATEGORY[i] = g.category; });
 });
 
-var CATEGORY_LABEL = { elementary: '小学生', middle: '中学生', high: '高校生' };
-var CATEGORY_ORDER = ['elementary', 'middle', 'high'];
+var CATEGORY_LABEL = { elementary: '小学生', middle: '中学生', high: '高校生', other: 'その他' };
+var CATEGORY_ORDER = ['elementary', 'middle', 'high', 'other'];
 var DEFAULT_DURATION = 60;
 
 var SUBJECT_COLORS = [
@@ -37,7 +38,7 @@ SUBJECT_COLORS.forEach(function (c) { SUBJECT_COLOR_MAP[c.id] = c; });
 /* ---------- State ---------- */
 
 var state = null;
-var filter = { elementary: true, middle: true, high: true };
+var filter = { elementary: true, middle: true, high: true, other: true };
 var fileHandle = null;
 var pendingCell = null;       // {dayId, roomId, startMinutes} awaiting a template pick
 var currentCellClassId = null; // classes entry currently shown in cellModal
@@ -474,7 +475,8 @@ function renderPicker() {
     return;
   }
 
-  var singleGroups = { elementary: [], middle: [], high: [] };
+  var singleGroups = {};
+  CATEGORY_ORDER.forEach(function (cat) { singleGroups[cat] = []; });
   var mixedGroup = [];
   state.catalog.forEach(function (t) {
     var cats = templateCategories(t);

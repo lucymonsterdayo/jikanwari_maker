@@ -26,6 +26,10 @@
   --color-high-bg: #ffe9db;
   --color-high-border: #ffab77;
   --color-high-text: #c1621f;
+
+  --color-other-bg: #eee9f8;
+  --color-other-border: #a99bd6;
+  --color-other-text: #5b4a94;
 }
 
 * { box-sizing: border-box; }
@@ -159,6 +163,7 @@ body {
 .legend-item.cat-elementary:has(input:checked) { background: var(--color-elementary-bg); border-color: var(--color-elementary-border); color: var(--color-elementary-text); }
 .legend-item.cat-middle:has(input:checked) { background: var(--color-middle-bg); border-color: var(--color-middle-border); color: var(--color-middle-text); }
 .legend-item.cat-high:has(input:checked) { background: var(--color-high-bg); border-color: var(--color-high-border); color: var(--color-high-text); }
+.legend-item.cat-other:has(input:checked) { background: var(--color-other-bg); border-color: var(--color-other-border); color: var(--color-other-text); }
 
 .dot {
   width: 12px;
@@ -170,6 +175,7 @@ body {
 .dot.cat-elementary { background: var(--color-elementary-border); }
 .dot.cat-middle { background: var(--color-middle-border); }
 .dot.cat-high { background: var(--color-high-border); }
+.dot.cat-other { background: var(--color-other-border); }
 
 /* ---------- Grid ---------- */
 main#printArea {

@@ -1081,8 +1081,8 @@ document.getElementById('btnZoomReset').addEventListener('click', function () {
 var CATEGORY_COLOR = { elementary: '#6fd39a', middle: '#7fb0f5', high: '#ffab77', other: '#a99bd6' };
 var IMG_FONT = '"Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif';
 var IMG_TIME_COL_WIDTH = 64;
-var IMG_ROOM_COL_WIDTH = 122;
-var IMG_ROW_HEIGHT = 70;
+var IMG_ROOM_COL_WIDTH = 136;
+var IMG_ROW_HEIGHT = 78;
 var IMG_DAY_HEADER_HEIGHT = 30;
 var IMG_ROOM_HEADER_HEIGHT = 26;
 
@@ -1167,29 +1167,29 @@ function drawClassCell(ctx, placement, x, y, w, h) {
     dotX += 11;
   });
   ctx.fillStyle = textColor;
-  ctx.font = 'bold 11px ' + IMG_FONT;
+  ctx.font = 'bold 12px ' + IMG_FONT;
   var duration = tmpl.duration || DEFAULT_DURATION;
   var gradeText = gradesLabel(getTemplateGrades(tmpl)) + ' ・ ' + duration + '分';
   fillTextEllipsis(ctx, gradeText, dotX, lineY, maxTextWidth - (dotX - innerX));
-  lineY += 16;
+  lineY += 17;
 
   var subjectName = subject ? subject.name : '(科目未設定)';
-  ctx.font = 'bold 13px ' + IMG_FONT;
+  ctx.font = 'bold 15px ' + IMG_FONT;
   fillTextEllipsis(ctx, subjectName, innerX, lineY, maxTextWidth);
-  lineY += 18;
+  lineY += 20;
 
   var metaParts = [];
   if (tmpl.teacher) metaParts.push('👤 ' + tmpl.teacher);
   if (tmpl.note) metaParts.push(tmpl.note);
-  if (metaParts.length && lineY + 14 <= y + h - 16) {
-    ctx.font = '11px ' + IMG_FONT;
+  if (metaParts.length && lineY + 15 <= y + h - 17) {
+    ctx.font = '12px ' + IMG_FONT;
     ctx.globalAlpha = 0.85;
     fillTextEllipsis(ctx, metaParts.join(' ・ '), innerX, lineY, maxTextWidth);
     ctx.globalAlpha = 1;
   }
 
   var timeLabel = classTimeRangeLabel(placement.cls, tmpl);
-  ctx.font = 'bold 10px ' + IMG_FONT;
+  ctx.font = 'bold 11px ' + IMG_FONT;
   ctx.globalAlpha = 0.75;
   ctx.textBaseline = 'bottom';
   fillTextEllipsis(ctx, timeLabel, innerX, y + h - 7, maxTextWidth);

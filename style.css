@@ -266,7 +266,7 @@ th.corner {
 
 th.day-head {
   background: linear-gradient(120deg, #ffe1ee, #e2ecff);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   padding: 8px 4px;
   border-radius: 12px;
@@ -275,9 +275,9 @@ th.day-head {
 
 th.room-head {
   background: #f4f1fc;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  min-width: 120px;
+  min-width: 132px;
   color: var(--text-muted);
   border-radius: 10px;
   padding: 5px 4px;
@@ -286,7 +286,7 @@ th.room-head {
 th.slot-head {
   background: #f7f4fd;
   min-width: 60px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   border-radius: 10px;
   padding: 2px 4px;
@@ -294,14 +294,14 @@ th.slot-head {
 }
 th.slot-head.hour-mark {
   background: var(--accent-soft);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--accent-hover);
 }
 
 td.cell {
-  height: 70px;
-  min-width: 120px;
+  height: 78px;
+  min-width: 132px;
   padding: 2px;
   background: #fbfaff;
   border-radius: 12px;
@@ -361,7 +361,7 @@ td.cell {
 
 .chip.subj-none { background: #eef0f2; border-color: #c7ccd1; color: #51565c; }
 
-.chip-grade { font-weight: 800; font-size: 11px; opacity: 0.85; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.chip-grade { font-weight: 800; font-size: 12px; opacity: 0.85; display: flex; align-items: center; gap: 4px; min-width: 0; }
 .chip-grade .dot { width: 9px; height: 9px; flex: none; }
 .chip-grade-text, .chip-subject, .chip-meta, .chip-time {
   white-space: nowrap;
@@ -369,9 +369,9 @@ td.cell {
   text-overflow: ellipsis;
   min-width: 0;
 }
-.chip-subject { font-weight: 800; font-size: 13px; }
-.chip-meta { font-size: 11px; opacity: 0.85; }
-.chip-time { font-size: 10px; opacity: 0.75; font-weight: 700; margin-top: auto; padding-top: 1px; }
+.chip-subject { font-weight: 800; font-size: 15px; }
+.chip-meta { font-size: 12px; opacity: 0.85; }
+.chip-time { font-size: 11px; opacity: 0.75; font-weight: 700; margin-top: auto; padding-top: 1px; }
 
 /* ---------- Modal ---------- */
 .modal-overlay {
